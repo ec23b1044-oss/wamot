@@ -1,21 +1,28 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY);
+
+// simple in-memory token store
+let sessions = {};
+
 export default async function handler(req, res) {
 
   const { device_id, password } = req.body;
 
-  const r = await fetch(
-    `${process.env.SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}&device_password=eq.${password}`,
-    {
-      headers: {
-        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY
-      }
-    }
-  );
+  const { data } = await supabase
+    .from("devices")
+    .select("*")
+    .eq("device_id", device_id)
+    .eq("device_password", password);
 
-  const data = await r.json();
-
-  if (data.length === 0) {
-    return res.status(401).json({ success: false });
+  if (!data || data.length === 0) {
+    return res.json({ success: false });
   }
 
-  res.json({ success: true });
+  // 🔥 generate token
+  const token = Math.random().toString(36).substring(2);
+
+  sessions[token] = device_id;
+
+  res.json({ success: true, token });
 }
