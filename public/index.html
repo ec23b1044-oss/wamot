@@ -86,7 +86,7 @@
       color: #38bdf8;
     }
 
-    /* 🔥 SWITCH */
+    /* SWITCH */
     .switch-container {
       display: flex;
       flex-direction: column;
@@ -101,8 +101,6 @@
 
     .switch input {
       opacity: 0;
-      width: 0;
-      height: 0;
     }
 
     .slider {
@@ -110,10 +108,7 @@
       cursor: pointer;
       background-color: #374151;
       border-radius: 30px;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       transition: 0.4s;
     }
 
@@ -124,7 +119,7 @@
       width: 24px;
       left: 3px;
       bottom: 3px;
-      background-color: white;
+      background: white;
       border-radius: 50%;
       transition: 0.4s;
     }
@@ -161,9 +156,7 @@
     }
 
     @media (max-width: 768px) {
-      .layout {
-        flex-direction: column;
-      }
+      .layout { flex-direction: column; }
     }
   </style>
 </head>
@@ -198,7 +191,6 @@
         <p id="level">--</p>
       </div>
 
-      <!-- MOTOR CONTROL -->
       <div class="card">
         <h2>Motor Control</h2>
 
@@ -230,10 +222,6 @@
 </div>
 
 <script>
-const SUPABASE_URL = "https://kpguizysdohumbzaypsb.supabase.co";
-const ANON_KEY = "sb_publishable_h8HtAyVdVwkZorXqzj1WKQ_Es5PYy9Q";
-
-
 let device_id = "";
 let password = "";
 let chart;
@@ -245,14 +233,15 @@ async function login() {
   device_id = document.getElementById("device_id").value;
   password = document.getElementById("password").value;
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}&device_password=eq.${password}`,
-    { headers: { "apikey": ANON_KEY } }
-  );
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id, password })
+  });
 
   const data = await res.json();
 
-  if (data.length === 0) {
+  if (!data.success) {
     alert("Invalid credentials");
     return;
   }
@@ -266,17 +255,17 @@ async function login() {
 
 // LIVE DATA
 async function getData() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.desc&limit=1`,
-    { headers: { "apikey": ANON_KEY } }
-  );
+
+  const res = await fetch("/api/get-data", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id })
+  });
 
   const data = await res.json();
 
-  if (data.length > 0) {
-    document.getElementById("tds").innerText = data[0].tds;
-    document.getElementById("level").innerText = data[0].water_level;
-  }
+  document.getElementById("tds").innerText = data.tds ?? "--";
+  document.getElementById("level").innerText = data.water_level ?? "--";
 }
 
 setInterval(() => {
@@ -285,10 +274,12 @@ setInterval(() => {
 
 // HISTORY
 async function loadHistory() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.asc`,
-    { headers: { "apikey": ANON_KEY } }
-  );
+
+  const res = await fetch("/api/get-history", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id })
+  });
 
   const data = await res.json();
 
@@ -340,20 +331,14 @@ function setMode(mode) {
   }
 }
 
-// RELAY API
+// RELAY
 async function setRelay(state) {
 
-  await fetch(
-    `${SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}&device_password=eq.${password}`,
-    {
-      method: "PATCH",
-      headers: {
-        "apikey": ANON_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ relay_state: state })
-    }
-  );
+  await fetch("/api/set-relay", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id, password, state })
+  });
 }
 </script>
 
