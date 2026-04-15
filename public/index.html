@@ -184,7 +184,6 @@
 </div>
 
 <script>
-const BASE = ""; // same domain (vercel)
 let chart;
 
 // 🔐 LOGIN
@@ -198,9 +197,20 @@ async function login() {
     body: JSON.stringify({ device_id, password })
   });
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const text = await res.text();
+    console.log("SERVER ERROR:", text);
+    alert("Server crashed");
+    return;
+  }
 
-  if (!data.success) return alert("Invalid");
+  if (!data.success) {
+    alert("Login failed");
+    return;
+  }
 
   localStorage.setItem("token", data.token);
 
@@ -232,8 +242,7 @@ async function getData() {
   document.getElementById("tds").innerText = d.tds;
   document.getElementById("level").innerText = d.water_level;
 
-  // status
-  let text="Safe", color="green";
+  let text="Drinkable", color="green";
   if (d.tds > 600) { text="Not Safe"; color="red"; }
   else if (d.tds > 300) { text="Moderate"; color="orange"; }
 
@@ -257,7 +266,7 @@ async function getHistory() {
   drawChart(labels, values);
 }
 
-// 📊 DRAW
+// 📊 GRAPH
 function drawChart(labels, values) {
   if (chart) chart.destroy();
 
@@ -313,7 +322,7 @@ async function setAuto() {
   });
 }
 
-// 🔁 LOAD ALL
+// 🔁 LOAD
 function loadAll() {
   getData();
   getRelay();
