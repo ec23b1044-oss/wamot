@@ -1,69 +1,114 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Water Monitoring System</title>
+  <title>Water Monitoring</title>
   <style>
     body {
-      font-family: Arial;
-      text-align: center;
-      background: #f5f5f5;
-      margin-top: 50px;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: 320px;
     }
 
     .card {
       background: white;
-      padding: 20px;
-      margin: 15px auto;
-      width: 280px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      text-align: center;
+      animation: fadeIn 0.5s ease;
     }
 
     input {
+      width: 90%;
       padding: 10px;
-      margin: 5px;
-      width: 200px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
     }
 
     button {
-      padding: 10px 20px;
-      margin: 10px;
+      width: 95%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #4facfe;
+      color: white;
+      font-size: 16px;
       cursor: pointer;
+    }
+
+    button:hover {
+      background: #3b8de3;
+    }
+
+    .dashboard {
+      display: none;
+      text-align: center;
+    }
+
+    .data-card {
+      background: white;
+      margin: 15px auto;
+      padding: 20px;
+      border-radius: 15px;
+      width: 280px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 
 <body>
 
-<h1>💧 Water Monitoring System</h1>
+<div class="container">
 
-<!-- 🔐 LOGIN -->
-<div class="card">
-  <h2>Device Login</h2>
-
-  <input id="device_id" placeholder="Device ID"><br>
-  <input id="password" type="password" placeholder="Password"><br>
-
-  <button onclick="login()">Login</button>
-</div>
-
-<!-- 📊 DASHBOARD -->
-<div id="dashboard" style="display:none">
-
-  <div class="card">
-    <h2>TDS</h2>
-    <p id="tds">--</p>
+  <!-- LOGIN -->
+  <div class="card" id="loginCard">
+    <h2>💧 Device Login</h2>
+    <input id="device_id" placeholder="Device ID">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
   </div>
 
-  <div class="card">
-    <h2>Water Level</h2>
-    <p id="level">--</p>
-  </div>
+  <!-- DASHBOARD -->
+  <div class="dashboard" id="dashboard">
 
-  <div class="card">
-    <h2>Relay Control</h2>
-    <button onclick="setRelay(true)">ON</button>
-    <button onclick="setRelay(false)">OFF</button>
+    <h1>Water Monitor</h1>
+
+    <div class="data-card">
+      <h3>TDS</h3>
+      <p id="tds">--</p>
+    </div>
+
+    <div class="data-card">
+      <h3>Water Level</h3>
+      <p id="level">--</p>
+    </div>
+
+    <div class="data-card">
+      <h3>Relay Control</h3>
+      <button onclick="setRelay(true)">Turn ON</button>
+      <button onclick="setRelay(false)">Turn OFF</button>
+    </div>
+
   </div>
 
 </div>
@@ -71,6 +116,7 @@
 <script>
 const SUPABASE_URL = "https://kpguizysdohumbzaypsb.supabase.co";
 const ANON_KEY = "sb_publishable_h8HtAyVdVwkZorXqzj1WKQ_Es5PYy9Q";
+
 
 let device_id = "";
 let password = "";
@@ -81,49 +127,37 @@ async function login() {
   device_id = document.getElementById("device_id").value;
   password = document.getElementById("password").value;
 
-  if (!device_id || !password) {
-    alert("Enter credentials");
-    return;
-  }
-
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}&device_password=eq.${password}`,
-    {
-      headers: { "apikey": ANON_KEY }
-    }
+    { headers: { "apikey": ANON_KEY } }
   );
 
   const data = await res.json();
 
   if (data.length === 0) {
-    alert("Invalid device ID or password");
+    alert("Invalid credentials");
     return;
   }
 
+  // ✨ Smooth transition
+  document.getElementById("loginCard").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
 
   getData();
 }
 
-// 📊 GET LATEST DATA (NO HISTORY)
+// 📊 GET DATA
 async function getData() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.desc&limit=1`,
+    { headers: { "apikey": ANON_KEY } }
+  );
 
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.desc&limit=1`,
-      {
-        headers: { "apikey": ANON_KEY }
-      }
-    );
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.length > 0) {
-      document.getElementById("tds").innerText = data[0].tds;
-      document.getElementById("level").innerText = data[0].water_level;
-    }
-  } catch (err) {
-    console.log("Error fetching data");
+  if (data.length > 0) {
+    document.getElementById("tds").innerText = data[0].tds;
+    document.getElementById("level").innerText = data[0].water_level;
   }
 }
 
@@ -147,7 +181,6 @@ async function setRelay(state) {
     }
   );
 
-  alert("Relay updated");
 }
 </script>
 
