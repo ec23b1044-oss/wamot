@@ -1,29 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Water Monitoring</title>
+  <title>WAMOT</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      background: #f0f2f5;
+    }
+
+    /* 🔐 LOGIN SCREEN */
+    .login-container {
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
     }
 
-    .container {
-      width: 320px;
-    }
-
-    .card {
+    .login-card {
       background: white;
-      padding: 25px;
+      padding: 30px;
       border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      width: 300px;
       text-align: center;
-      animation: fadeIn 0.5s ease;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
 
     input {
@@ -35,78 +39,103 @@
     }
 
     button {
-      width: 95%;
       padding: 10px;
-      margin-top: 10px;
+      width: 95%;
       border: none;
       border-radius: 8px;
       background: #4facfe;
       color: white;
-      font-size: 16px;
       cursor: pointer;
     }
 
-    button:hover {
-      background: #3b8de3;
-    }
-
+    /* 🧠 DASHBOARD */
     .dashboard {
       display: none;
-      text-align: center;
+      padding: 20px;
     }
 
-    .data-card {
+    .layout {
+      display: flex;
+      gap: 20px;
+    }
+
+    .left, .right {
       background: white;
-      margin: 15px auto;
       padding: 20px;
       border-radius: 15px;
-      width: 280px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
 
-    h1 {
-      color: white;
-      text-align: center;
+    .left {
+      flex: 1;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .right {
+      flex: 2;
+    }
+
+    .card {
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    /* 📱 MOBILE */
+    @media (max-width: 768px) {
+      .layout {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 
 <body>
 
-<div class="container">
-
-  <!-- LOGIN -->
-  <div class="card" id="loginCard">
+<!-- 🔐 LOGIN -->
+<div class="login-container" id="loginScreen">
+  <div class="login-card">
     <h2>💧 Device Login</h2>
     <input id="device_id" placeholder="Device ID">
     <input id="password" type="password" placeholder="Password">
     <button onclick="login()">Login</button>
   </div>
+</div>
 
-  <!-- DASHBOARD -->
-  <div class="dashboard" id="dashboard">
+<!-- 🧠 DASHBOARD -->
+<div class="dashboard" id="dashboard">
 
-    <h1>Water Monitor</h1>
+  <div class="layout">
 
-    <div class="data-card">
-      <h3>TDS</h3>
-      <p id="tds">--</p>
+    <!-- LEFT SIDE -->
+    <div class="left">
+
+      <div class="card">
+        <h2>Live TDS</h2>
+        <p id="tds">--</p>
+      </div>
+
+      <div class="card">
+        <h2>Water Level</h2>
+        <p id="level">--</p>
+      </div>
+
+      <div class="card">
+        <h2>Relay Control</h2>
+        <button onclick="setRelay(true)">Turn ON</button>
+        <button onclick="setRelay(false)">Turn OFF</button>
+      </div>
+
     </div>
 
-    <div class="data-card">
-      <h3>Water Level</h3>
-      <p id="level">--</p>
-    </div>
-
-    <div class="data-card">
-      <h3>Relay Control</h3>
-      <button onclick="setRelay(true)">Turn ON</button>
-      <button onclick="setRelay(false)">Turn OFF</button>
+    <!-- RIGHT SIDE -->
+    <div class="right">
+      <h2>📊 30-Day History</h2>
+      <canvas id="chart"></canvas>
     </div>
 
   </div>
@@ -120,6 +149,7 @@ const ANON_KEY = "sb_publishable_h8HtAyVdVwkZorXqzj1WKQ_Es5PYy9Q";
 
 let device_id = "";
 let password = "";
+let chart;
 
 // 🔐 LOGIN
 async function login() {
@@ -139,14 +169,14 @@ async function login() {
     return;
   }
 
-  // ✨ Smooth transition
-  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("loginScreen").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
 
   getData();
+  loadHistory();
 }
 
-// 📊 GET DATA
+// 📊 LIVE DATA
 async function getData() {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.desc&limit=1`,
@@ -166,9 +196,52 @@ setInterval(() => {
   if (device_id) getData();
 }, 5000);
 
-// 🔌 RELAY CONTROL
-async function setRelay(state) {
+// 📈 LOAD HISTORY
+async function loadHistory() {
 
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&created_at=gte.${getPastDate()}&order=created_at.asc`,
+    { headers: { "apikey": ANON_KEY } }
+  );
+
+  const data = await res.json();
+
+  const labels = data.map(d => new Date(d.created_at).toLocaleDateString());
+  const tds = data.map(d => d.tds);
+
+  drawChart(labels, tds);
+}
+
+// 🕒 LAST 30 DAYS
+function getPastDate() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString();
+}
+
+// 📊 DRAW CHART
+function drawChart(labels, values) {
+
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "TDS",
+        data: values,
+        borderWidth: 2,
+        fill: false
+      }]
+    }
+  });
+}
+
+// 🔌 RELAY
+async function setRelay(state) {
   await fetch(
     `${SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}&device_password=eq.${password}`,
     {
@@ -180,7 +253,6 @@ async function setRelay(state) {
       body: JSON.stringify({ relay_state: state })
     }
   );
-
 }
 </script>
 
