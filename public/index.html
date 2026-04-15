@@ -12,7 +12,6 @@
       color: white;
     }
 
-    /* LOGIN */
     .login-container {
       height: 100vh;
       display: flex;
@@ -27,7 +26,6 @@
       border-radius: 20px;
       width: 300px;
       text-align: center;
-      box-shadow: 0 0 40px rgba(0,0,0,0.6);
     }
 
     input {
@@ -48,29 +46,20 @@
       background: linear-gradient(45deg, #2563eb, #06b6d4);
       color: white;
       cursor: pointer;
-      font-weight: bold;
     }
 
-    /* DASHBOARD */
-    .dashboard {
-      display: none;
-      padding: 20px;
-    }
+    .dashboard { display: none; padding: 20px; }
 
-    .layout {
-      display: flex;
-      gap: 20px;
-    }
+    .layout { display: flex; gap: 20px; }
 
     .left, .right {
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(20px);
       border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+      flex: 1;
     }
 
-    .left { flex: 1; }
     .right { flex: 2; }
 
     .card {
@@ -81,10 +70,7 @@
       text-align: center;
     }
 
-    h2 {
-      margin: 0 0 10px;
-      color: #38bdf8;
-    }
+    h2 { color: #38bdf8; }
 
     /* SWITCH */
     .switch-container {
@@ -99,29 +85,26 @@
       height: 30px;
     }
 
-    .switch input {
-      opacity: 0;
-    }
+    .switch input { opacity: 0; }
 
     .slider {
       position: absolute;
-      cursor: pointer;
       background-color: #374151;
       border-radius: 30px;
       top: 0; left: 0; right: 0; bottom: 0;
-      transition: 0.4s;
+      cursor: pointer;
     }
 
     .slider:before {
-      position: absolute;
       content: "";
+      position: absolute;
       height: 24px;
       width: 24px;
       left: 3px;
       bottom: 3px;
       background: white;
       border-radius: 50%;
-      transition: 0.4s;
+      transition: 0.3s;
     }
 
     input:checked + .slider {
@@ -139,9 +122,9 @@
     }
 
     .mode-buttons {
-      margin-top: 15px;
       display: flex;
       gap: 10px;
+      margin-top: 15px;
     }
 
     .mode-buttons button {
@@ -151,8 +134,7 @@
 
     canvas {
       background: rgba(255,255,255,0.05);
-      border-radius: 15px;
-      padding: 10px;
+      border-radius: 10px;
     }
 
     @media (max-width: 768px) {
@@ -169,13 +151,12 @@
     <h2>💧 WAMOT</h2>
     <input id="device_id" placeholder="Device ID">
     <input id="password" type="password" placeholder="Password">
-    <button onclick="login()">Access Device</button>
+    <button onclick="login()">Login</button>
   </div>
 </div>
 
 <!-- DASHBOARD -->
 <div class="dashboard" id="dashboard">
-
   <div class="layout">
 
     <!-- LEFT -->
@@ -192,9 +173,9 @@
       </div>
 
       <div class="card">
-        <h2>Motor Control</h2>
+        <h2>Motor</h2>
 
-        <div class="switch-container" id="switchContainer">
+        <div id="switchContainer" class="switch-container">
           <label class="switch">
             <input type="checkbox" id="relaySwitch" onchange="toggleRelay()">
             <span class="slider"></span>
@@ -213,19 +194,17 @@
 
     <!-- RIGHT -->
     <div class="right">
-      <h2>📊 Historical Data</h2>
+      <h2>📊 History</h2>
       <canvas id="chart"></canvas>
     </div>
 
   </div>
-
 </div>
 
 <script>
 let device_id = "";
 let password = "";
 let chart;
-let currentMode = "MANUAL";
 
 // LOGIN
 async function login() {
@@ -241,21 +220,18 @@ async function login() {
 
   const data = await res.json();
 
-  if (!data.success) {
-    alert("Invalid credentials");
-    return;
-  }
+  if (!data.success) return alert("Invalid login");
 
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
 
   getData();
   loadHistory();
+  getRelayState();
 }
 
 // LIVE DATA
 async function getData() {
-
   const res = await fetch("/api/get-data", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -268,13 +244,67 @@ async function getData() {
   document.getElementById("level").innerText = data.water_level ?? "--";
 }
 
-setInterval(() => {
-  if (device_id) getData();
-}, 5000);
+// RELAY STATE SYNC
+async function getRelayState() {
+  const res = await fetch("/api/get-relay", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id })
+  });
+
+  const data = await res.json();
+  updateRelayUI(data.state);
+}
+
+// UPDATE UI
+function updateRelayUI(state) {
+  const box = document.getElementById("switchContainer");
+  const sw = document.getElementById("relaySwitch");
+  const label = document.getElementById("switchLabel");
+
+  if (state === "ON") {
+    sw.checked = true;
+    box.classList.remove("disabled");
+    label.innerText = "ON";
+  } else if (state === "OFF") {
+    sw.checked = false;
+    box.classList.remove("disabled");
+    label.innerText = "OFF";
+  } else {
+    box.classList.add("disabled");
+    label.innerText = "AUTO";
+  }
+}
+
+// TOGGLE
+function toggleRelay() {
+  const state = document.getElementById("relaySwitch").checked ? "ON" : "OFF";
+  document.getElementById("switchLabel").innerText = state;
+  setRelay(state);
+}
+
+// MODE
+function setMode(mode) {
+  if (mode === "AUTO") {
+    document.getElementById("switchContainer").classList.add("disabled");
+    document.getElementById("switchLabel").innerText = "AUTO";
+    setRelay("AUTO");
+  } else {
+    document.getElementById("switchContainer").classList.remove("disabled");
+  }
+}
+
+// SET RELAY
+async function setRelay(state) {
+  await fetch("/api/set-relay", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ device_id, password, state })
+  });
+}
 
 // HISTORY
 async function loadHistory() {
-
   const res = await fetch("/api/get-history", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -286,16 +316,9 @@ async function loadHistory() {
   const labels = data.map(d => new Date(d.created_at).toLocaleDateString());
   const values = data.map(d => d.tds);
 
-  drawChart(labels, values);
-}
-
-function drawChart(labels, values) {
-
   if (chart) chart.destroy();
 
-  const ctx = document.getElementById("chart");
-
-  chart = new Chart(ctx, {
+  chart = new Chart(document.getElementById("chart"), {
     type: "line",
     data: {
       labels,
@@ -309,37 +332,13 @@ function drawChart(labels, values) {
   });
 }
 
-// SWITCH
-function toggleRelay() {
-  const state = document.getElementById("relaySwitch").checked;
-  document.getElementById("switchLabel").innerText = state ? "ON" : "OFF";
-  setRelay(state ? "ON" : "OFF");
-}
-
-// MODE
-function setMode(mode) {
-
-  currentMode = mode;
-  const switchBox = document.getElementById("switchContainer");
-
-  if (mode === "AUTO") {
-    switchBox.classList.add("disabled");
-    document.getElementById("switchLabel").innerText = "AUTO";
-    setRelay("AUTO");
-  } else {
-    switchBox.classList.remove("disabled");
+// AUTO REFRESH
+setInterval(() => {
+  if (device_id) {
+    getData();
+    getRelayState();
   }
-}
-
-// RELAY
-async function setRelay(state) {
-
-  await fetch("/api/set-relay", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ device_id, password, state })
-  });
-}
+}, 5000);
 </script>
 
 </body>
