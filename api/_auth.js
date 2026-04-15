@@ -1,3 +1,5 @@
+export const sessions = {};
+
 export function verifyToken(req) {
   const auth = req.headers.authorization;
 
