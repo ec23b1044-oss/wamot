@@ -1,47 +1,84 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>IoT Dashboard</title>
+  <title>WAMOT Dashboard</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin: 20px auto;
+      width: 250px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Sensor Data</h2>
+<h1>💧 Water Monitoring System</h1>
 
-<p>TDS: <span id="tds">--</span></p>
-<p>Water Level: <span id="level">--</span></p>
+<div class="card">
+  <h2>TDS</h2>
+  <p id="tds">--</p>
+</div>
 
-<h2>Relay Control</h2>
+<div class="card">
+  <h2>Water Level</h2>
+  <p id="level">--</p>
+</div>
 
-<button onclick="setRelay(true)">ON</button>
-<button onclick="setRelay(false)">OFF</button>
+<div class="card">
+  <h2>Relay Control</h2>
+  <button onclick="setRelay(true)">ON</button>
+  <button onclick="setRelay(false)">OFF</button>
+</div>
 
 <script>
 const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
 const ANON_KEY = "YOUR_ANON_KEY";
 
-// 🔁 Fetch latest sensor data
+const device_id = "device_001";
+
+// 🔁 Fetch latest data
 async function getData() {
-  const res = await fetch(
-    SUPABASE_URL + "/rest/v1/device_data?device_id=eq.device_001&order=created_at.desc&limit=1",
-    {
-      headers: {
-        "apikey": ANON_KEY
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/device_data?device_id=eq.${device_id}&order=created_at.desc&limit=1`,
+      {
+        headers: {
+          "apikey": ANON_KEY
+        }
       }
+    );
+
+    const data = await res.json();
+
+    if (data.length > 0) {
+      document.getElementById("tds").innerText = data[0].tds;
+      document.getElementById("level").innerText = data[0].water_level;
     }
-  );
-
-  const data = await res.json();
-
-  if (data.length > 0) {
-    document.getElementById("tds").innerText = data[0].tds;
-    document.getElementById("level").innerText = data[0].water_level;
+  } catch (err) {
+    console.log("Error fetching data");
   }
 }
 
 // 🔁 Relay control
 async function setRelay(state) {
   await fetch(
-    SUPABASE_URL + "/rest/v1/devices?device_id=eq.device_001",
+    `${SUPABASE_URL}/rest/v1/devices?device_id=eq.${device_id}`,
     {
       method: "PATCH",
       headers: {
@@ -58,7 +95,7 @@ async function setRelay(state) {
 // 🔄 Auto refresh every 5 sec
 setInterval(getData, 5000);
 
-// initial load
+// Initial load
 getData();
 </script>
 
