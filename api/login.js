@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { sessions } from './_auth';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SERVICE_ROLE_KEY);
-
-// simple in-memory token store
-let sessions = {};
 
 export default async function handler(req, res) {
 
@@ -19,7 +17,6 @@ export default async function handler(req, res) {
     return res.json({ success: false });
   }
 
-  // 🔥 generate token
   const token = Math.random().toString(36).substring(2);
 
   sessions[token] = device_id;
