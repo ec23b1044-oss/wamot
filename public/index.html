@@ -3,8 +3,8 @@
 <head>
   <title>WAMOT</title>
 
-  <!-- IMPORTANT FOR MOBILE -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ✅ FIX: prevents zoomed-out mobile scaling -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -14,6 +14,10 @@
       font-family: 'Segoe UI', sans-serif;
       background: radial-gradient(circle at top, #0f172a, #020617);
       color: white;
+
+      /* ✅ FIX: prevents iOS text auto zoom weirdness */
+      -webkit-text-size-adjust: 100%;
+      font-size: 16px;
     }
 
     /* LOGIN */
@@ -22,15 +26,19 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 10px;
+      padding: 12px;
     }
 
     .login-card {
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(20px);
-      padding: 30px;
+      padding: 28px;
       border-radius: 20px;
-      width: 300px;
+
+      /* ✅ FIX: responsive instead of fixed feel */
+      width: 100%;
+      max-width: 320px;
+
       text-align: center;
       box-shadow: 0 0 30px rgba(0,0,0,0.5);
     }
@@ -61,7 +69,7 @@
     /* DASHBOARD */
     .dashboard {
       display: none;
-      padding: 15px;
+      padding: 12px;
     }
 
     .layout {
@@ -179,13 +187,8 @@
         flex-direction: column;
       }
 
-      .login-card {
-        width: 90%;
-        padding: 20px;
-      }
-
       .card {
-        padding: 15px;
+        padding: 14px;
       }
 
       h2 {
@@ -193,7 +196,11 @@
       }
 
       button {
-        font-size: 14px;
+        font-size: 15px;
+      }
+
+      input {
+        font-size: 15px;
       }
 
       canvas {
@@ -289,7 +296,7 @@ async function login() {
   getRelayState();
 }
 
-// LIVE DATA
+// DATA
 async function getData() {
   const res = await fetch("/api/get-data", {
     method: "POST",
